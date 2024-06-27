@@ -1,9 +1,6 @@
 <?php declare(strict_types=1);
 use PHPUnit\Framework\TestCase; 
 include 'src/FinalResult.php';
-
-
-
 final class FinalResultTest extends TestCase
 {
     private $expected_return = [

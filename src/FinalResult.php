@@ -13,10 +13,9 @@ class FinalResult
     const END_TO_END_ID_1_COLUMN = 10;
     const END_TO_END_ID_2_COLUMN = 11;
     const BANK_CODE_COLUMN = 3;
-    const MIN_BANK_ACCOUNT_NUMBER_LENGTH = 6; // Example minimum length
-    const MAX_BANK_ACCOUNT_NUMBER_LENGTH = 12; // Example maximum length
-
-    public function results($filePath)
+    const MIN_BANK_ACCOUNT_NUMBER_LENGTH = 6; 
+    const MAX_BANK_ACCOUNT_NUMBER_LENGTH = 12; 
+  public function results($filePath)
     {
         if (!file_exists($filePath)) {
             throw new Exception("File not found: " . $filePath);
@@ -59,14 +58,11 @@ class FinalResult
                     "bank_code" => $bankCode,
                     "end_to_end_id" => $endToEndId,
                 ];
-
                 $records[] = $record;
             }
         }
-
-        fclose($handle);
-
-        return [
+     fclose($handle);
+       return [
             "filename" => basename($filePath),
             "document" => $filePath,
             "failure_code" => $header[self::FAILURE_CODE_COLUMN],
@@ -75,23 +71,11 @@ class FinalResult
         ];
     }
 
-    /**
-     * Validates the bank account number.
-     *
-     * @param string $bankAccountNumber The bank account number to validate.
-     * @return bool True if the bank account number is valid, false otherwise.
-     */
     private function validateBankAccountNumber($bankAccountNumber)
     {
         return ctype_digit($bankAccountNumber);
     }
 
-    /**
-     * Validates the bank code.
-     *
-     * @param string $bankCode The bank code to validate.
-     * @return bool True if the bank code is valid, false otherwise.
-     */
     private function validateBankCode($bankCode)
     {
         return ctype_digit($bankCode);

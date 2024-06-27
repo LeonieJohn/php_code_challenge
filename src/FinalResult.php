@@ -1,40 +1,99 @@
 <?php
 
-class FinalResult {
-    function results($f) {
-        $d = fopen($f, "r");
-        $h = fgetcsv($d);
-        $rcs = [];
-        while(!feof($d)) {
-            $r = fgetcsv($d);
-            if(count($r) == 16) {
-                $amt = !$r[8] || $r[8] == "0" ? 0 : (float) $r[8];
-                $ban = !$r[6] ? "Bank account number missing" : (int) $r[6];
-                $bac = !$r[2] ? "Bank branch code missing" : $r[2];
-                $e2e = !$r[10] && !$r[11] ? "End to end id missing" : $r[10] . $r[11];
-                $rcd = [
+class FinalResult
+{
+    const EXPECTED_COLUMN_COUNT = 16;
+    const CURRENCY_COLUMN = 0;
+    const FAILURE_CODE_COLUMN = 1;
+    const FAILURE_MESSAGE_COLUMN = 2;
+    const BANK_BRANCH_CODE_COLUMN = 2;
+    const BANK_ACCOUNT_NUMBER_COLUMN = 6;
+    const BANK_ACCOUNT_NAME_COLUMN = 7;
+    const AMOUNT_COLUMN = 8;
+    const END_TO_END_ID_1_COLUMN = 10;
+    const END_TO_END_ID_2_COLUMN = 11;
+    const BANK_CODE_COLUMN = 3;
+    const MIN_BANK_ACCOUNT_NUMBER_LENGTH = 6; // Example minimum length
+    const MAX_BANK_ACCOUNT_NUMBER_LENGTH = 12; // Example maximum length
+
+    public function results($filePath)
+    {
+        if (!file_exists($filePath)) {
+            throw new Exception("File not found: " . $filePath);
+        }
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            throw new Exception("Unable to open file: " . $filePath);
+        }
+
+        $header = fgetcsv($handle);
+        if (!$header || count($header) < 3) {
+            fclose($handle);
+            throw new Exception("Invalid CSV header");
+        }
+
+        $records = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) == self::EXPECTED_COLUMN_COUNT) {
+                $amount = empty($row[self::AMOUNT_COLUMN]) || $row[self::AMOUNT_COLUMN] == "0" ? 0 : (float)$row[self::AMOUNT_COLUMN];
+                $bankAccountNumber = $this->validateBankAccountNumber($row[self::BANK_ACCOUNT_NUMBER_COLUMN])
+                    ? $row[self::BANK_ACCOUNT_NUMBER_COLUMN]
+                    : "Invalid bank account number";
+                $bankBranchCode = empty($row[self::BANK_BRANCH_CODE_COLUMN]) ? "Bank branch code missing" : $row[self::BANK_BRANCH_CODE_COLUMN];
+                $endToEndId = empty($row[self::END_TO_END_ID_1_COLUMN]) && empty($row[self::END_TO_END_ID_2_COLUMN]) 
+                    ? "End to end id missing" 
+                    : $row[self::END_TO_END_ID_1_COLUMN] . $row[self::END_TO_END_ID_2_COLUMN];
+                $bankCode = $this->validateBankCode($row[self::BANK_CODE_COLUMN])
+                    ? $row[self::BANK_CODE_COLUMN]
+                    : "Invalid bank code";
+
+                $record = [
                     "amount" => [
-                        "currency" => $h[0],
-                        "subunits" => (int) ($amt * 100)
+                        "currency" => $header[self::CURRENCY_COLUMN],
+                        "subunits" => (int)($amount * 100)
                     ],
-                    "bank_account_name" => str_replace(" ", "_", strtolower($r[7])),
-                    "bank_account_number" => $ban,
-                    "bank_branch_code" => $bac,
-                    "bank_code" => $r[0],
-                    "end_to_end_id" => $e2e,
+                    "bank_account_name" => str_replace(" ", "_", strtolower($row[self::BANK_ACCOUNT_NAME_COLUMN])),
+                    "bank_account_number" => $bankAccountNumber,
+                    "bank_branch_code" => $bankBranchCode,
+                    "bank_code" => $bankCode,
+                    "end_to_end_id" => $endToEndId,
                 ];
-                $rcs[] = $rcd;
+
+                $records[] = $record;
             }
         }
-        $rcs = array_filter($rcs);
+
+        fclose($handle);
+
         return [
-            "filename" => basename($f),
-            "document" => $d,
-            "failure_code" => $h[1],
-            "failure_message" => $h[2],
-            "records" => $rcs
+            "filename" => basename($filePath),
+            "document" => $filePath,
+            "failure_code" => $header[self::FAILURE_CODE_COLUMN],
+            "failure_message" => $header[self::FAILURE_MESSAGE_COLUMN],
+            "records" => $records
         ];
     }
-}
 
-?>
+    /**
+     * Validates the bank account number.
+     *
+     * @param string $bankAccountNumber The bank account number to validate.
+     * @return bool True if the bank account number is valid, false otherwise.
+     */
+    private function validateBankAccountNumber($bankAccountNumber)
+    {
+        return ctype_digit($bankAccountNumber);
+    }
+
+    /**
+     * Validates the bank code.
+     *
+     * @param string $bankCode The bank code to validate.
+     * @return bool True if the bank code is valid, false otherwise.
+     */
+    private function validateBankCode($bankCode)
+    {
+        return ctype_digit($bankCode);
+    }
+}
